@@ -20,7 +20,10 @@ vi.mock('electron', () => {
   bw.prototype.focus = vi.fn();
   bw.prototype.restore = vi.fn();
 
-  return {BrowserWindow: bw};
+  const mockIpcMain = {
+    handle: vi.fn(),
+  };
+  return {BrowserWindow: bw, ipcMain: mockIpcMain };
 });
 
 
