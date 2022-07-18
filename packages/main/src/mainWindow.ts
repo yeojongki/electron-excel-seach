@@ -1,6 +1,7 @@
-import {BrowserWindow} from 'electron';
-import {join} from 'path';
-import {URL} from 'url';
+import { BrowserWindow, dialog, ipcMain } from 'electron';
+import { join, basename, extname } from 'path';
+import { URL } from 'url';
+import * as nodejieba from 'nodejieba';
 
 async function createWindow() {
   const browserWindow = new BrowserWindow({
@@ -30,10 +31,13 @@ async function createWindow() {
    * Vite dev server for development.
    * `file://../renderer/index.html` for production and test
    */
-  const pageUrl = import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined
-    ? import.meta.env.VITE_DEV_SERVER_URL
-    : new URL('../renderer/dist/index.html', 'file://' + __dirname).toString();
-
+  const pageUrl =
+    import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined
+      ? import.meta.env.VITE_DEV_SERVER_URL
+      : new URL(
+          '../renderer/dist/index.html',
+          'file://' + __dirname,
+        ).toString();
 
   await browserWindow.loadURL(pageUrl);
 
@@ -44,7 +48,7 @@ async function createWindow() {
  * Restore existing BrowserWindow or Create new BrowserWindow
  */
 export async function restoreOrCreateWindow() {
-  let window = BrowserWindow.getAllWindows().find(w => !w.isDestroyed());
+  let window = BrowserWindow.getAllWindows().find((w) => !w.isDestroyed());
 
   if (window === undefined) {
     window = await createWindow();
@@ -54,5 +58,25 @@ export async function restoreOrCreateWindow() {
     window.restore();
   }
 
+  ipcMain.handle('dialog:openFile', handleFileOpen);
+  ipcMain.handle('nodejieba:cut', handleJiebaCut);
+
   window.focus();
+}
+
+async function handleJiebaCut(
+  _: Electron.IpcMainInvokeEvent,
+  sentence: string,
+) {
+  return nodejieba.cutAll(sentence);
+}
+
+async function handleFileOpen() {
+  const { canceled, filePaths } = await dialog.showOpenDialog({});
+  if (canceled) {
+    return { filePath: undefined, fileName: undefined };
+  } else {
+    const filePath = filePaths[0];
+    return { filePath, fileName: basename(filePath, extname(filePath)) };
+  }
 }
