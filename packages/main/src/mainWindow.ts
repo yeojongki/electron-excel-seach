@@ -1,6 +1,7 @@
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import { join, basename, extname } from 'path';
 import { URL } from 'url';
+import * as nodejieba from 'nodejieba';
 
 async function createWindow() {
   const browserWindow = new BrowserWindow({
@@ -58,8 +59,13 @@ export async function restoreOrCreateWindow() {
   }
 
   ipcMain.handle('dialog:openFile', handleFileOpen);
+  ipcMain.handle('nodejieba:cut', handleJiebaCut);
 
   window.focus();
+}
+
+async function handleJiebaCut(event: Electron.IpcMainInvokeEvent, sentence:string) {
+  return nodejieba.cut(sentence);
 }
 
 async function handleFileOpen() {

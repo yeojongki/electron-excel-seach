@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { openFile, readExcel } from '#preload';
+import { openFile, readExcel, nodejiebaCut } from '#preload';
 import { reactive } from 'vue';
-import { db, Locale } from '../db';
+import { notification } from 'ant-design-vue';
+import { put } from '../db';
+import type { Locale } from '../db';
 
 let currentSheets: { name: string; data: string[][] }[] = [];
 
@@ -29,6 +31,7 @@ const columns = [
 ];
 
 const state = reactive({
+  spinning: false,
   sheetBookName: '', // 当前工作簿名
   dataSource: [] as {
     name: string;
@@ -68,24 +71,33 @@ const importWorkTable = async (
     inIndex,
   }: { cnIndex: string; enIndex: string; inIndex?: string },
 ) => {
-  const result: Locale[] = [];
+  try {
+    state.spinning = true;
+    const result: Locale[] = [];
 
-  data.forEach((row, index) => {
-    // 0 为标题行
-    if (index > 0 && row.length) {
-      const item: Locale = {
-        cn: row[cnIndex as unknown as number],
-        en: row[enIndex as unknown as number],
-        in: inIndex ? row[inIndex as unknown as number] : '',
-        sheet: state.sheetBookName,
-        table: sheetTable,
-      };
-      result.push(item);
+    for (const [index, row] of data.entries()) {
+      // 0 为标题行
+      if (index > 0 && row.length) {
+        const cn = row[cnIndex as unknown as number];
+        const item: Locale = {
+          // id,
+          idx: nodejiebaCut(cn),
+          cn,
+          en: row[enIndex as unknown as number],
+          in: inIndex ? row[inIndex as unknown as number] : '',
+          sheet: state.sheetBookName,
+          table: sheetTable,
+        };
+        result.push(item);
+      }
     }
-  });
-
-  await db.locale.bulkAdd(result);
-  alert(`本次成功导入${result.length}条数据`);
+    await put(result);
+    alert(`本次成功导入${result.length}条数据`);
+  } catch (error) {
+    notification.error((error as any)?.message || JSON.stringify(error));
+  } finally {
+    state.spinning = false;
+  }
 };
 
 const preImportWorkTable = (index: number) => {
@@ -104,46 +116,48 @@ const preImportWorkTable = (index: number) => {
 </script>
 
 <template>
-  <a-button
-    style="margin-bottom: 15px"
-    @click="chooseFile"
-  >
-    选择文件
-  </a-button>
+  <a-spin :spinning="state.spinning">
+    <a-button
+      style="margin-bottom: 15px"
+      @click="chooseFile"
+    >
+      选择文件
+    </a-button>
 
-  <a-table
-    :pagination="false"
-    :bordered="true"
-    :columns="columns"
-    :data-source="state.dataSource"
-  >
-    <template #bodyCell="{ column, index }">
-      <template v-if="column.dataIndex === 'cnIndex'">
-        <a-input-number
-          v-model:value="state.dataSource[index].cnIndex"
-          :min="0"
-        />
-      </template>
+    <a-table
+      :pagination="false"
+      :bordered="true"
+      :columns="columns"
+      :data-source="state.dataSource"
+    >
+      <template #bodyCell="{ column, index }">
+        <template v-if="column.dataIndex === 'cnIndex'">
+          <a-input-number
+            v-model:value="state.dataSource[index].cnIndex"
+            :min="0"
+          />
+        </template>
 
-      <template v-if="column.dataIndex === 'enIndex'">
-        <a-input-number
-          v-model:value="state.dataSource[index].enIndex"
-          :min="0"
-        />
-      </template>
+        <template v-if="column.dataIndex === 'enIndex'">
+          <a-input-number
+            v-model:value="state.dataSource[index].enIndex"
+            :min="0"
+          />
+        </template>
 
-      <template v-if="column.dataIndex === 'inIndex'">
-        <a-input-number
-          v-model:value="state.dataSource[index].inIndex"
-          :min="0"
-        />
-      </template>
+        <template v-if="column.dataIndex === 'inIndex'">
+          <a-input-number
+            v-model:value="state.dataSource[index].inIndex"
+            :min="0"
+          />
+        </template>
 
-      <template v-if="column.dataIndex === 'action'">
-        <a-button @click="preImportWorkTable(index)">
-          导入数据
-        </a-button>
+        <template v-if="column.dataIndex === 'action'">
+          <a-button @click="preImportWorkTable(index)">
+            导入数据
+          </a-button>
+        </template>
       </template>
-    </template>
-  </a-table>
+    </a-table>
+  </a-spin>
 </template>

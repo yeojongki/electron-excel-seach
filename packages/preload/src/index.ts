@@ -1,5 +1,6 @@
 import { ipcRenderer } from 'electron';
 import xlsx from 'node-xlsx';
+import * as nodejieba from 'nodejieba';
 import * as fs from 'fs';
 
 /**
@@ -8,6 +9,10 @@ import * as fs from 'fs';
 
 export { sha256sum } from './nodeCrypto';
 export { versions } from './versions';
+
+export function nodejiebaCut(sentence: string) {
+  return nodejieba.cut(sentence);
+}
 
 export function openFile() {
   return ipcRenderer.invoke('dialog:openFile');
