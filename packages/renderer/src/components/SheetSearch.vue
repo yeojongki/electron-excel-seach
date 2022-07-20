@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import type { FormInstance } from 'ant-design-vue';
+import { computed, reactive, ref } from 'vue';
+import { FormInstance, message } from 'ant-design-vue';
 import { notification } from 'ant-design-vue';
-import { query, Locale } from '../db';
+import { query, Locale, ignoreChars } from '../db';
 import { nodejiebaCut } from '#preload';
+import CopyableText from './CopyableText.vue';
+import { QueryResultItem, QueryResultItemNoDoc } from 'types/search-index';
 
 const formRef = ref<FormInstance>();
 
@@ -14,24 +16,29 @@ const state = reactive({
     {
       title: '中文',
       dataIndex: 'cn',
-      width: 150,
     },
     {
       title: '英文',
       dataIndex: 'en',
-      width: 150,
     },
     {
       title: '印尼',
       dataIndex: 'in',
-      width: 150,
     },
     {
-      title: '文件名',
+      title: '泰文',
+      dataIndex: 'th',
+    },
+    {
+      title: '越南',
+      dataIndex: 'vn',
+    },
+    {
+      title: '工作簿',
       dataIndex: 'sheet',
     },
     {
-      title: '工作表名',
+      title: '工作表',
       dataIndex: 'table',
     },
     {
@@ -40,49 +47,62 @@ const state = reactive({
     },
   ],
   form: {
-    cn: '',
-    en: '',
-    in: '',
-    sheet: '',
-    table: '',
+    field: 'cn',
+    keyword: '',
   },
 });
 
+const formatResult = (result: QueryResultItem[] | QueryResultItemNoDoc[]) =>
+  result.map((item) => {
+    const locale = (item as any)._doc as Locale;
+    return {
+      cn: locale.cn,
+      en: locale.en,
+      in: locale.in,
+      th: locale.th,
+      vn: locale.vn,
+      table: locale.table,
+      sheet: locale.sheet,
+    };
+  });
+
+
+const FIELD = computed(() =>
+  state.form.field === 'cn' ? 'idx' : state.form.field,
+);
+
 const onFinish = async () => {
-  if (state.form.cn) {
+  if (state.form.keyword) {
     try {
       state.spinning = true;
-      // const result = await db.locale
-      //   .filter((item) => item.cn.includes(state.form.cn))
-      //   .toArray();
       const { RESULT, RESULT_LENGTH } = await query(
-        nodejiebaCut(state.form.cn),
+        {
+          // FIELD: FIELD.value,
+          OR: nodejiebaCut(state.form.keyword)
+            .filter((text) => !ignoreChars.includes(text))
+            .map((text) => `${FIELD.value}:${text}`),
+        },
+        { DOCUMENTS: true },
       );
-      console.log(RESULT_LENGTH);
-
-      state.dataSource = RESULT.map((item) => {
-        const locale = (item as any)._doc as Locale;
-        return {
-          cn: locale.cn,
-          en: locale.en,
-          in: locale.in,
-          table: locale.table,
-          sheet: locale.sheet,
-        };
-      });
+      console.log(RESULT);
+      state.dataSource = formatResult(RESULT);
+      RESULT_LENGTH && message.success(`共找到${RESULT_LENGTH}条数据`);
     } catch (error) {
-      notification.error((error as any)?.message || JSON.stringify(error));
+      notification.error({
+        message: (error as any)?.message || JSON.stringify(error),
+      });
     } finally {
       state.spinning = false;
     }
   }
 };
 
+/**
+ * 重置清空数据
+ */
 const reset = async () => {
   formRef.value?.resetFields();
   state.dataSource = [];
-  // const result = await db.locale.toArray();
-  // state.dataSource = result;
 };
 </script>
 
@@ -96,39 +116,43 @@ const reset = async () => {
       class="mb-15"
       @finish="onFinish"
     >
-      <a-form-item
-        label="中文"
-        name="cn"
+      <a-select v-model:value="state.form.field">
+        <a-select-option value="cn">
+          中文
+        </a-select-option>
+        <a-select-option value="en">
+          英文
+        </a-select-option>
+        <a-select-option value="in">
+          印尼
+        </a-select-option>
+        <a-select-option value="th">
+          泰文
+        </a-select-option>
+        <a-select-option value="vn">
+          越南
+        </a-select-option>
+      </a-select>
+      <a-input
+        v-model:value="state.form.keyword"
+        placeholder="请输入关键词"
+        style="width: 200px"
+      />
+
+      <a-button
+        class="ml-15"
+        type="primary"
+        html-type="submit"
       >
-        <a-input
-          v-model:value="state.form.cn"
-          style="width: 200px"
-        />
-      </a-form-item>
-
-      <!-- <a-form-item label="英文" name="en">
-      <a-input v-model:value="state.form.en" />
-    </a-form-item>
-
-    <a-form-item label="印尼" name="in">
-      <a-input v-model:value="state.form.in" />
-    </a-form-item> -->
-
-      <a-form-item>
-        <a-button
-          type="primary"
-          html-type="submit"
-        >
-          搜索
-        </a-button>
-        <a-button
-          class="ml-15"
-          html-type="reset"
-          @click="reset"
-        >
-          重置
-        </a-button>
-      </a-form-item>
+        搜索
+      </a-button>
+      <a-button
+        class="ml-15"
+        html-type="reset"
+        @click="reset"
+      >
+        重置
+      </a-button>
     </a-form>
 
     <a-table
@@ -139,17 +163,39 @@ const reset = async () => {
     >
       <template #bodyCell="{ column, text }">
         <template v-if="column.dataIndex === 'cn'">
-          {{ text }}
+          <div>
+            <CopyableText
+              :text="text"
+              class="long-text"
+            />
+          </div>
         </template>
 
         <template v-if="column.dataIndex === 'en'">
-          {{ text }}
+          <div>
+            <CopyableText
+              :text="text"
+              class="long-text"
+            />
+          </div>
         </template>
 
         <template v-if="column.dataIndex === 'in'">
-          {{ text }}
+          <div>
+            <CopyableText
+              :text="text"
+              class="long-text"
+            />
+          </div>
         </template>
       </template>
     </a-table>
   </a-spin>
 </template>
+
+<style scoped>
+.long-text {
+  max-width: 400px;
+  display: inline-block;
+}
+</style>

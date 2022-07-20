@@ -1,7 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import SI from 'search-index';
-
-export type SearchIndex = Awaited<ReturnType<typeof SI>>;
+import { QueryOptions, SearchIndex, Token } from 'types/search-index';
 
 const projectName = '9708_excel_locale';
 export const version = 1;
@@ -10,12 +8,34 @@ export const dataDBName = `${projectName}_data`;
 export const indexDBName = `${projectName}_index`;
 
 export interface Locale {
-  // id: string;
   idx?: string[];
+  /**
+   * 中文
+   */
   cn: string;
+  /**
+   * 英文
+   */
   en: string;
+  /**
+   * 印尼
+   */
   in: string;
+  /**
+   * 泰文
+   */
+  th: string;
+  /**
+   * 越南
+   */
+  vn: string;
+  /**
+   * 工作簿/项目名
+   */
   sheet: string;
+  /**
+   * 工作表
+   */
   table: string;
 }
 
@@ -30,8 +50,8 @@ window
     searchDB = result;
   });
 
-// const ignoreChars =
-//   " \t\r\n~!@#$%^&*()_+-=【】、{}|;':\"，。、《》？αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩①②③④⑤⑥⑦⑧⑨⑩⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇≈≡≠＝≤≥＜＞≮≯∷±＋－×÷／∫∮∝∞∧∨∑∏∪∩∈∵∴⊥∥∠⌒⊙≌∽√§№☆★○●◎◇◆□℃‰€■△▲※→←↑↓〓¤°＃＆＠＼︿＿￣―♂♀┌┍┎┐┑┒┓─┄┈├┝┞┟┠┡┢┣│┆┊┬┭┮┯┰┱┲┳┼┽┾┿╀╁╂╃└┕┖┗┘┙┚┛━┅┉┤┥┦┧┨┩┪┫┃┇┋┴┵┶┷┸┹┺┻╋╊╉╈╇╆╅╄";
+export const ignoreChars =
+  ' \t\r\n~!@#$%^&*()_+-=【】、{}|;\':"，。、《》？αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩①②③④⑤⑥⑦⑧⑨⑩⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇≈≡≠＝≤≥＜＞≮≯∷±＋－×÷／∫∮∝∞∧∨∑∏∪∩∈∵∴⊥∥∠⌒⊙≌∽√§№☆★○●◎◇◆□℃‰€■△▲※→←↑↓〓¤°＃＆＠＼︿＿￣―♂♀┌┍┎┐┑┒┓─┄┈├┝┞┟┠┡┢┣│┆┊┬┭┮┯┰┱┲┳┼┽┾┿╀╁╂╃└┕┖┗┘┙┚┛━┅┉┤┥┦┧┨┩┪┫┃┇┋┴┵┶┷┸┹┺┻╋╊╉╈╇╆╅╄';
 
 export function getCurrentId() {
   return Number(localStorage.getItem(incrementIdKey));
@@ -45,16 +65,9 @@ export async function put<T = any>(items: T[]) {
   await searchDB.PUT(items);
 }
 
-export async function query(searchParams: any) {
+export async function query(query: Token, options?: QueryOptions) {
   console.time('query');
-
-  const result = await searchDB.QUERY(
-    {
-      OR: searchParams,
-    },
-    { DOCUMENTS: true },
-  );
-
+  const result = await searchDB.QUERY(query, options);
   console.timeEnd('query');
   return result;
 }

@@ -24,20 +24,10 @@ const activeKey = ref('import');
 </template>
 
 <style>
+@import './styles/global.css';
+
 #app {
   text-align: center;
   margin: 20px;
-}
-.mt-15 {
-  margin-top: 15px;
-}
-.mr-15 {
-  margin-right: 15px;
-}
-.mb-15 {
-  margin-bottom: 15px;
-}
-.ml-15 {
-  margin-left: 15px;
 }
 </style>
