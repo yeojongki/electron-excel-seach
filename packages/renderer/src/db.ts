@@ -8,6 +8,7 @@ export const dataDBName = `${projectName}_data`;
 export const indexDBName = `${projectName}_index`;
 
 export interface Locale {
+  id?: number;
   idx?: string[];
   /**
    * 中文
@@ -20,15 +21,15 @@ export interface Locale {
   /**
    * 印尼
    */
-  in: string;
+  in?: string;
   /**
    * 泰文
    */
-  th: string;
+  th?: string;
   /**
    * 越南
    */
-  vn: string;
+  vn?: string;
   /**
    * 工作簿/项目名
    */
@@ -39,7 +40,7 @@ export interface Locale {
   table: string;
 }
 
-let searchDB: SearchIndex;
+let _searchIndex: SearchIndex;
 
 window
   .SearchIndex({
@@ -47,7 +48,7 @@ window
     storeVectors: true,
   })
   .then((result: SearchIndex) => {
-    searchDB = result;
+    _searchIndex = result;
   });
 
 export const ignoreChars =
@@ -61,16 +62,17 @@ export function setCurrentId(id: number | string) {
   localStorage.setItem(incrementIdKey, id + '');
 }
 
-export async function put<T = any>(items: T[]) {
-  await searchDB.PUT(items);
-}
-
-export async function query(query: Token, options?: QueryOptions) {
-  console.time('query');
-  const result = await searchDB.QUERY(query, options);
-  console.timeEnd('query');
-  return result;
-}
+export const indexDB = {
+  async put<T = any>(items: T[]) {
+    await _searchIndex.PUT(items);
+  },
+  async query(query: Token, options?: QueryOptions) {
+    console.time('【index-query】');
+    const result = await _searchIndex.QUERY(query, options);
+    console.timeEnd('【index-query】');
+    return result;
+  },
+};
 
 export class DataDB extends Dexie {
   // 'locale' is added by dexie when declaring the stores()

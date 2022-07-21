@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { FormInstance, message } from 'ant-design-vue';
 import { notification } from 'ant-design-vue';
-import { query, Locale, ignoreChars } from '../db';
+import { indexDB, dataDB, Locale, ignoreChars } from '../db';
 import { nodejiebaCut } from '#preload';
 import CopyableText from './CopyableText.vue';
-import { QueryResultItem, QueryResultItemNoDoc } from 'types/search-index';
 
 const formRef = ref<FormInstance>();
 
@@ -47,53 +46,55 @@ const state = reactive({
     },
   ],
   form: {
-    field: 'cn',
+    field: 'cn' as 'cn' | 'en' | 'in' | 'th' | 'vn',
     keyword: '',
   },
 });
 
-const formatResult = (result: QueryResultItem[] | QueryResultItemNoDoc[]) =>
-  result.map((item) => {
-    const locale = (item as any)._doc as Locale;
-    return {
-      cn: locale.cn,
-      en: locale.en,
-      in: locale.in,
-      th: locale.th,
-      vn: locale.vn,
-      table: locale.table,
-      sheet: locale.sheet,
-    };
-  });
-
-
-const FIELD = computed(() =>
-  state.form.field === 'cn' ? 'idx' : state.form.field,
-);
-
 const onFinish = async () => {
-  if (state.form.keyword) {
-    try {
-      state.spinning = true;
-      const { RESULT, RESULT_LENGTH } = await query(
+  const { field } = state.form;
+  const keyword = state.form.keyword.trim();
+  if (!keyword) return;
+  console.time('【search】');
+  try {
+    state.spinning = true;
+    // 大于2个字符的中英文走索引数据库找ID
+    if ((field === 'cn' || field === 'en') && keyword.length > 1) {
+      const { RESULT } = await indexDB.query(
         {
-          // FIELD: FIELD.value,
-          OR: nodejiebaCut(state.form.keyword)
+          OR: nodejiebaCut(keyword)
             .filter((text) => !ignoreChars.includes(text))
-            .map((text) => `${FIELD.value}:${text}`),
+            .map((text) => `${field}:${text}`),
         },
         { DOCUMENTS: true },
       );
-      console.log(RESULT);
-      state.dataSource = formatResult(RESULT);
-      RESULT_LENGTH && message.success(`共找到${RESULT_LENGTH}条数据`);
-    } catch (error) {
-      notification.error({
-        message: (error as any)?.message || JSON.stringify(error),
+
+      const ids = RESULT.map((item) => (item as any)._doc.id);
+      const datas = await dataDB.locale.bulkGet(ids);
+      state.dataSource = datas as Locale[];
+      RESULT.length && message.success(`共找到${RESULT.length}条数据`);
+      // console.log({ RESULT, datas });
+    } else {
+      // 走普通的数据库找数据
+      const RESULT = await dataDB.locale.filter((item) => {
+        const fieldVal = item[field] + ''; // 转字符串避免是数字
+        if (fieldVal) {
+          return fieldVal.includes(keyword);
+        }
+        return false;
       });
-    } finally {
-      state.spinning = false;
+      const datas = await RESULT.toArray();
+      state.dataSource = datas;
+      datas?.length && message.success(`共找到${datas.length}条数据`);
+      // console.log({ datas });
     }
+    console.timeEnd('【search】');
+  } catch (error) {
+    notification.error({
+      message: (error as any)?.message || JSON.stringify(error),
+    });
+  } finally {
+    state.spinning = false;
   }
 };
 

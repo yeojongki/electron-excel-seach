@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { openFile, readExcel, nodejiebaCut, decodeCol } from '#preload';
-import { reactive } from 'vue';
+import { computed, reactive } from 'vue';
 import { notification } from 'ant-design-vue';
-import { ignoreChars, put } from '../db';
+import {
+  dataDB,
+  getCurrentId,
+  ignoreChars,
+  indexDB,
+  setCurrentId,
+} from '../db';
 import type { Locale } from '../db';
 
 interface LocaleIndexs {
@@ -18,7 +24,10 @@ interface ImportData extends LocaleIndexs {
   table: string;
 }
 
-let currentSheets: { name: string; data: string[][] }[] = [];
+/**
+ * {name: data[][]}
+ */
+const sheetsMap: Record<string, string[][]> = {};
 
 const columns = [
   {
@@ -60,23 +69,42 @@ const state = reactive({
   spiningTips: '',
   sheetBookName: '', // 当前工作簿名
   dataSource: [] as ImportData[],
+  importTask: {
+    total: 0,
+    current: 0,
+  },
+  selectedRowKeys: [] as number[],
+  selectedRows: [] as ImportData[],
 });
 
+const hasSelected = computed(() => state.selectedRows.length > 0);
+
+const onSelectChange = (
+  selectedRowKeys: number[],
+  selectedRows: ImportData[],
+) => {
+  state.selectedRowKeys = selectedRowKeys;
+  state.selectedRows = selectedRows;
+};
+
+/**
+ * 选择文件导入 excel
+ */
 const chooseFile = async () => {
   try {
     state.spiningTips = '正在加载 Excel 数据...';
     state.spinning = true;
-    
+
     const { filePath, fileName } = await openFile();
     if (!filePath) return; // 点击了取消
 
     const sheets = readExcel(filePath);
     if (sheets) {
       state.sheetBookName = fileName; // 保存 excel 文件名
-      currentSheets = sheets as any; // 保存 excel 数据
-
       sheets.forEach((sheet, index) => {
         const { name } = sheet;
+        sheetsMap[name] = sheet.data as string[][]; // 保存 excel 数据
+
         state.dataSource[index] = {
           sheet: fileName,
           table: name,
@@ -95,42 +123,60 @@ const chooseFile = async () => {
   }
 };
 
-const importWorkTable = async (
+/**
+ * 导入 excel 数据到数据库中
+ * @param data 解析出来的数据
+ * @param table 工作表名
+ * @param param2 索引s
+ */
+const importToDB = async (
   data: string[][],
-  sheetTable: string,
+  table: string,
   { cnIndex, enIndex, inIndex, vnIndex, thIndex }: LocaleIndexs,
 ) => {
   try {
-    state.spiningTips = '正在导入 Excel 数据...';
-    state.spinning = true;
-    const result: Locale[] = [];
+    let currentId = getCurrentId();
 
+    const dataDBList: any[] = [];
+    const indexDBList: any[] = [];
     for (const [index, row] of data.entries()) {
       // 0 为标题行
       if (index > 0 && row.length) {
         const cn = row[cnIndex as unknown as number];
-        const item: Locale = {
-          idx: nodejiebaCut(cn).filter((text) => !ignoreChars.includes(text)),
+        const id = currentId++;
+        const indexDBItem = {
+          id,
+          cn: nodejiebaCut(cn).filter((text) => !ignoreChars.includes(text)),
+          en: row[enIndex as unknown as number],
+        };
+
+        const dataDBItem: Locale = {
+          id,
           cn,
           en: row[enIndex as unknown as number],
           in: inIndex ? row[inIndex as unknown as number] : '',
           vn: vnIndex ? row[vnIndex as unknown as number] : '',
           th: thIndex ? row[thIndex as unknown as number] : '',
           sheet: state.sheetBookName,
-          table: sheetTable,
+          table,
         };
-        result.push(item);
+
+        dataDBList.push(dataDBItem);
+        indexDBList.push(indexDBItem);
+        state.importTask.total += 1;
       }
     }
 
-    await put(result);
-    notification.success({ message: `本次成功导入${result.length}条数据` });
+    await Promise.all([
+      dataDB.locale.bulkAdd(dataDBList),
+      indexDB.put(indexDBList),
+    ]);
+
+    setCurrentId(currentId);
   } catch (error) {
     notification.error({
       message: (error as any)?.message || JSON.stringify(error),
     });
-  } finally {
-    state.spinning = false;
   }
 };
 
@@ -138,22 +184,57 @@ const importWorkTable = async (
  * 预导入 excel 数据 检查 CN EN 字母必填
  * @param index
  */
-const preImportWorkTable = (index: number) => {
-  const { cnIndex, enIndex, inIndex, thIndex, vnIndex } =
-    state.dataSource[index];
-
+const preImportWorkTable = (importData: ImportData) => {
+  const { cnIndex, enIndex, inIndex, thIndex, vnIndex, table } = importData;
   if (cnIndex === '' || enIndex === '') {
-    notification.error({ message: '请输入中文列和英文列的字母' });
-    return;
+    const msg = '请输入中文列和英文列的字母';
+    notification.error({ message: msg });
+    return Promise.reject(msg);
   }
 
-  importWorkTable(currentSheets[index].data, currentSheets[index].name, {
+  return importToDB(sheetsMap[table], state.sheetBookName, {
     cnIndex: decodeCol(cnIndex.toUpperCase()),
     enIndex: decodeCol(enIndex.toUpperCase()),
     inIndex: inIndex ? decodeCol(inIndex.toUpperCase()) : '',
     thIndex: thIndex ? decodeCol(thIndex.toUpperCase()) : '',
     vnIndex: vnIndex ? decodeCol(vnIndex.toUpperCase()) : '',
   });
+};
+
+/**
+ * 导入选中的工作表数据
+ * @param index
+ */
+const importSelectedTable = async (importData?: ImportData) => {
+  try {
+    console.time('importToDB');
+    state.spiningTips = '正在导入 Excel 数据...';
+    state.spinning = true;
+
+    // 导入单个表
+    if (importData) {
+      await preImportWorkTable(importData);
+    } else {
+      // 批量导入
+      const promiseList = state.selectedRows.map((data) =>
+        preImportWorkTable(data),
+      );
+      await Promise.all(promiseList);
+    }
+
+    notification.success({
+      message: `本次成功导入${state.importTask.total}条数据`,
+    });
+    console.timeEnd('importToDB');
+  } catch (error) {
+    notification.error({
+      message: (error as any)?.message || JSON.stringify(error),
+    });
+  } finally {
+    state.spinning = false;
+    state.importTask.total = 0;
+    state.importTask.current = 0;
+  }
 };
 </script>
 
@@ -164,10 +245,19 @@ const preImportWorkTable = (index: number) => {
   >
     <a-button
       type="primary"
-      style="margin-bottom: 15px"
+      class="mb-15"
       @click="chooseFile"
     >
       选择要导入的 Excel
+    </a-button>
+
+    <a-button
+      :disabled="!hasSelected"
+      type="primary"
+      class="ml-15 mb-15"
+      @click="() => importSelectedTable()"
+    >
+      导入选中的工作表数据
     </a-button>
 
     <a-table
@@ -175,6 +265,11 @@ const preImportWorkTable = (index: number) => {
       :bordered="true"
       :columns="columns"
       :data-source="state.dataSource"
+      :row-selection="{
+        selectedRowKeys: state.selectedRowKeys,
+        onChange: onSelectChange,
+      }"
+      :row-key="(row:Locale)=>row.sheet+'-'+row.table"
     >
       <template #bodyCell="{ column, index }">
         <template v-if="column.dataIndex === 'cnIndex'">
@@ -198,7 +293,7 @@ const preImportWorkTable = (index: number) => {
         </template>
 
         <template v-if="column.dataIndex === 'action'">
-          <a-button @click="preImportWorkTable(index)">
+          <a-button @click="importSelectedTable(state.dataSource[index])">
             导入数据
           </a-button>
         </template>
