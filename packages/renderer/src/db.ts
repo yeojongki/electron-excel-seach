@@ -1,4 +1,4 @@
-import Dexie, { Table } from 'dexie';
+// import Dexie, { Table } from "dexie";
 import { QueryOptions, SearchIndex, Token } from 'types/search-index';
 
 const projectName = '9708_excel_locale';
@@ -33,7 +33,7 @@ export interface Locale {
   /**
    * 工作簿/项目名
    */
-  sheet: string;
+  book: string;
   /**
    * 工作表
    */
@@ -52,7 +52,7 @@ window
   });
 
 export const ignoreChars =
-  ' \t\r\n~!@#$%^&*()_+-=【】、{}|;\':"，。、《》？αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩①②③④⑤⑥⑦⑧⑨⑩⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇≈≡≠＝≤≥＜＞≮≯∷±＋－×÷／∫∮∝∞∧∨∑∏∪∩∈∵∴⊥∥∠⌒⊙≌∽√§№☆★○●◎◇◆□℃‰€■△▲※→←↑↓〓¤°＃＆＠＼︿＿￣―♂♀┌┍┎┐┑┒┓─┄┈├┝┞┟┠┡┢┣│┆┊┬┭┮┯┰┱┲┳┼┽┾┿╀╁╂╃└┕┖┗┘┙┚┛━┅┉┤┥┦┧┨┩┪┫┃┇┋┴┵┶┷┸┹┺┻╋╊╉╈╇╆╅╄';
+  ' \t\r\n~!@#$%^&*()_+-=[]【】、{}|;\':"，。、《》？αβγδεζηθικλμνξοπρστυφχψωΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩ。，、；：？！…—·ˉ¨‘’“”々～‖∶＂＇｀｜〃〔〕〈〉《》「」『』．〖〗【】（）［］｛｝ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ⒈⒉⒊⒋⒌⒍⒎⒏⒐⒑⒒⒓⒔⒕⒖⒗⒘⒙⒚⒛㈠㈡㈢㈣㈤㈥㈦㈧㈨㈩①②③④⑤⑥⑦⑧⑨⑩⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇≈≡≠＝≤≥＜＞≮≯∷±＋－×÷／∫∮∝∞∧∨∑∏∪∩∈∵∴⊥∥∠⌒⊙≌∽√§№☆★○●◎◇◆□℃‰€■△▲※→←↑↓〓¤°＃＆＠＼︿＿￣―♂♀┌┍┎┐┑┒┓─┄┈├┝┞┟┠┡┢┣│┆┊┬┭┮┯┰┱┲┳┼┽┾┿╀╁╂╃└┕┖┗┘┙┚┛━┅┉┤┥┦┧┨┩┪┫┃┇┋┴┵┶┷┸┹┺┻╋╊╉╈╇╆╅╄';
 
 export function getCurrentId() {
   return Number(localStorage.getItem(incrementIdKey));
@@ -66,25 +66,26 @@ export const indexDB = {
   async put<T = any>(items: T[]) {
     await _searchIndex.PUT(items);
   },
+  async all(limit?: number) {
+    return _searchIndex.ALL_DOCUMENTS(limit);
+  },
   async query(query: Token, options?: QueryOptions) {
-    console.time('【index-query】');
     const result = await _searchIndex.QUERY(query, options);
-    console.timeEnd('【index-query】');
     return result;
   },
 };
 
-export class DataDB extends Dexie {
-  // 'locale' is added by dexie when declaring the stores()
-  // We just tell the typing system this is the case
-  locale!: Table<Locale>;
+// export class DataDB extends Dexie {
+//   // 'locale' is added by dexie when declaring the stores()
+//   // We just tell the typing system this is the case
+//   locale!: Table<Locale>;
 
-  constructor() {
-    super(dataDBName);
-    this.version(version).stores({
-      locale: '&id, cn, en, in', // Primary key and indexed props
-    });
-  }
-}
+//   constructor() {
+//     super(dataDBName);
+//     this.version(version).stores({
+//       locale: "&id, cn, en, in", // Primary key and indexed props
+//     });
+//   }
+// }
 
-export const dataDB = new DataDB();
+// export const dataDB = new DataDB();

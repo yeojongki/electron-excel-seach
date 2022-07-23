@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { FormInstance, message } from 'ant-design-vue';
 import { notification } from 'ant-design-vue';
-import { indexDB, dataDB, Locale, ignoreChars } from '../db';
-import { nodejiebaCut } from '#preload';
+import { indexDB, Locale, ignoreChars } from '../db';
+import { nodejieba } from '#preload';
 import CopyableText from './CopyableText.vue';
+import { QueryResultItem } from 'types/search-index';
 
 const formRef = ref<FormInstance>();
 
 const state = reactive({
   spinning: false,
+  allData: [] as Locale[],
   dataSource: [] as Locale[],
   columns: [
+    {
+      title: '工作簿',
+      dataIndex: 'book',
+    },
+    {
+      title: '工作表',
+      dataIndex: 'table',
+    },
     {
       title: '中文',
       dataIndex: 'cn',
@@ -33,14 +43,6 @@ const state = reactive({
       dataIndex: 'vn',
     },
     {
-      title: '工作簿',
-      dataIndex: 'sheet',
-    },
-    {
-      title: '工作表',
-      dataIndex: 'table',
-    },
-    {
       title: '操作',
       dataIndex: 'action',
     },
@@ -51,42 +53,66 @@ const state = reactive({
   },
 });
 
+const formatResult = (result: { _doc: any }[]) =>
+  result.map((item) => {
+    const locale = (item as any)._doc as Locale;
+    return {
+      idx: item._doc.idx,
+      cn: locale.cn,
+      en: locale.en,
+      in: locale.in,
+      th: locale.th,
+      vn: locale.vn,
+      table: locale.table,
+      book: locale.book,
+    };
+  });
+
+const FIELD = computed(() =>
+  state.form.field === 'cn' && state.form.keyword.length > 1
+    ? 'idx'
+    : state.form.field,
+);
+
 const onFinish = async () => {
-  const { field } = state.form;
   const keyword = state.form.keyword.trim();
-  if (!keyword) return;
   console.time('【search】');
   try {
     state.spinning = true;
-    // 大于2个字符的中英文走索引数据库找ID
-    if ((field === 'cn' || field === 'en') && keyword.length > 1) {
+    if (keyword.length > 1) {
+      // 大于1个字符的中文先分词
+      const searchQuery =
+        FIELD.value === 'cn'
+          ? nodejieba
+              .cutAll(keyword)
+              .filter((text) => !ignoreChars.includes(text))
+              .map((text) => `${FIELD.value}:${text}`)
+          : FIELD.value === 'en'
+          ? nodejieba
+              .cutHMM(keyword)
+              .filter((text) => !ignoreChars.includes(text))
+              .map((text) => `${FIELD.value}:${text}`)
+          : [`${FIELD.value}:${keyword}`];
+
+      console.log(`【searchQuery】: ${searchQuery}`);
       const { RESULT } = await indexDB.query(
         {
-          OR: nodejiebaCut(keyword)
-            .filter((text) => !ignoreChars.includes(text))
-            .map((text) => `${field}:${text}`),
+          OR: searchQuery,
         },
         { DOCUMENTS: true },
       );
+      console.log(RESULT);
 
-      const ids = RESULT.map((item) => (item as any)._doc.id);
-      const datas = await dataDB.locale.bulkGet(ids);
-      state.dataSource = datas as Locale[];
+      state.dataSource = formatResult(RESULT as QueryResultItem[]);
       RESULT.length && message.success(`共找到${RESULT.length}条数据`);
       // console.log({ RESULT, datas });
     } else {
-      // 走普通的数据库找数据
-      const RESULT = await dataDB.locale.filter((item) => {
-        const fieldVal = item[field] + ''; // 转字符串避免是数字
-        if (fieldVal) {
-          return fieldVal.includes(keyword);
-        }
-        return false;
-      });
-      const datas = await RESULT.toArray();
-      state.dataSource = datas;
-      datas?.length && message.success(`共找到${datas.length}条数据`);
-      // console.log({ datas });
+      if (!state.allData.length) {
+        await initData();
+      }
+      state.dataSource = state.allData.filter((item) =>
+        item[FIELD.value]?.includes(keyword),
+      );
     }
     console.timeEnd('【search】');
   } catch (error) {
@@ -104,6 +130,26 @@ const onFinish = async () => {
 const reset = async () => {
   formRef.value?.resetFields();
   state.dataSource = [];
+};
+
+/**
+ * 初始化所有数据
+ */
+const initData = async () => {
+  try {
+    console.time('【all】');
+    state.spinning = true;
+    const data = await indexDB.all();
+    state.allData = formatResult(data);
+    state.spinning = false;
+    console.timeEnd('【all】');
+  } catch (error) {
+    notification.error({
+      message: (error as any).message || JSON.stringify(error),
+    });
+  } finally {
+    state.spinning = false;
+  }
 };
 </script>
 
@@ -163,31 +209,19 @@ const reset = async () => {
       :data-source="state.dataSource"
     >
       <template #bodyCell="{ column, text }">
-        <template v-if="column.dataIndex === 'cn'">
-          <div>
-            <CopyableText
-              :text="text"
-              class="long-text"
-            />
-          </div>
-        </template>
-
-        <template v-if="column.dataIndex === 'en'">
-          <div>
-            <CopyableText
-              :text="text"
-              class="long-text"
-            />
-          </div>
-        </template>
-
-        <template v-if="column.dataIndex === 'in'">
-          <div>
-            <CopyableText
-              :text="text"
-              class="long-text"
-            />
-          </div>
+        <template
+          v-if="
+            column.dataIndex === 'cn' ||
+              column.dataIndex === 'en' ||
+              column.dataIndex === 'in' ||
+              column.dataIndex === 'vn' ||
+              column.dataIndex === 'th'
+          "
+        >
+          <CopyableText
+            :text="text"
+            class="long-text"
+          />
         </template>
       </template>
     </a-table>

@@ -11,16 +11,14 @@ import * as fs from 'fs';
 export { sha256sum } from './nodeCrypto';
 export { versions } from './versions';
 
-export function nodejiebaCut(sentence: string) {
-  return nodejieba.cut(sentence);
-}
+export { nodejieba };
 
 export function openFile() {
   return ipcRenderer.invoke('dialog:openFile');
 }
 
 export function decodeCol(col: string) {
-  return utils.decode_col(col)+ '';
+  return utils.decode_col(col) + '';
 }
 
 export function readExcel(path: string) {

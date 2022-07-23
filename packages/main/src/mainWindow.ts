@@ -64,8 +64,11 @@ export async function restoreOrCreateWindow() {
   window.focus();
 }
 
-async function handleJiebaCut(event: Electron.IpcMainInvokeEvent, sentence:string) {
-  return nodejieba.cut(sentence);
+async function handleJiebaCut(
+  _: Electron.IpcMainInvokeEvent,
+  sentence: string,
+) {
+  return nodejieba.cutAll(sentence);
 }
 
 async function handleFileOpen() {
@@ -74,6 +77,6 @@ async function handleFileOpen() {
     return { filePath: undefined, fileName: undefined };
   } else {
     const filePath = filePaths[0];
-    return { filePath, fileName: basename(filePath, `.${extname(filePath)}`) };
+    return { filePath, fileName: basename(filePath, extname(filePath)) };
   }
 }

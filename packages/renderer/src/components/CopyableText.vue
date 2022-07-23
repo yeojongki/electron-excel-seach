@@ -15,8 +15,9 @@ const onClick = (data: string) => {
   <span class="copyable-text">
     {{ props.text }}
     <CopyOutlined
+      v-if="props.text"
       class="ml-15 text-blue"
-      @click="onClick(props.text)"
+      @click="onClick(props.text!)"
     />
   </span>
 </template>
