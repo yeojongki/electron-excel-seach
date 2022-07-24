@@ -1,5 +1,12 @@
 // import Dexie, { Table } from "dexie";
-import { QueryOptions, SearchIndex, Token } from 'types/search-index';
+import {
+  QueryOptions,
+  SearchIndex,
+  SearchIndexOptions,
+  Token,
+  TokenizerArgs,
+} from 'types/search-index';
+import { nodejieba } from '#preload';
 
 const projectName = '9708_excel_locale';
 export const version = 1;
@@ -42,13 +49,31 @@ export interface Locale {
 
 let _searchIndex: SearchIndex;
 
+/**
+ * 自定义分词 TODO 泰文 越南
+ * @param param0
+ * @returns
+ */
+const CUSTOM_SPLIT = ([tokens, field, ops]: TokenizerArgs) => {
+  return Promise.resolve([
+    field === 'cn'
+      ? nodejieba.cutAll(tokens).filter((text) => !ignoreChars.includes(text))
+      : field === 'en' || field === 'in'
+      ? nodejieba.cutHMM(tokens).filter((text) => !ignoreChars.includes(text))
+      : [tokens],
+    field,
+    ops,
+  ]);
+};
+
 window
   .SearchIndex({
     name: indexDBName,
     storeVectors: true,
-  })
+  } as SearchIndexOptions)
   .then((result: SearchIndex) => {
     _searchIndex = result;
+    console.log(result.EXPORT().then((res) => console.log(res)));
   });
 
 export const ignoreChars =
@@ -64,7 +89,27 @@ export function setCurrentId(id: number | string) {
 
 export const indexDB = {
   async put<T = any>(items: T[]) {
-    await _searchIndex.PUT(items);
+    await _searchIndex.PUT(items, {
+      tokenizer(tokens, field, ops) {
+        const {
+          SKIP,
+          LOWCASE,
+          REPLACE,
+          NGRAMS,
+          STOPWORDS,
+          SCORE_TERM_FREQUENCY,
+        } = _searchIndex.TOKENIZATION_PIPELINE_STAGES;
+
+        return CUSTOM_SPLIT([tokens, field, ops])
+          .then(SKIP as any)
+          .then(LOWCASE as any)
+          .then(REPLACE as any)
+          .then(NGRAMS as any)
+          .then(STOPWORDS as any)
+          .then(SCORE_TERM_FREQUENCY as any)
+          .then(([tokens]) => tokens) as Promise<string>;
+      },
+    });
   },
   async all(limit?: number) {
     return _searchIndex.ALL_DOCUMENTS(limit);

@@ -13,6 +13,8 @@ export interface SearchIndexOptions {
     name?: string | undefined;
     tokenAppend?: string | undefined;
     stopwords?: string[] | undefined;
+    tokenSplitRegex?: RegExp;
+    tokenizer?: Tokenizer
 }
 
 export interface Page {
@@ -105,7 +107,7 @@ export interface Replace {
 
 export type TokenizerArgs = [tokens: string, field: string, ops: PutOptions];
 export type SplitTokenizerArgs = [tokens: string[], field: string, ops: PutOptions];
-export type Tokenizer = (...args: TokenizerArgs) => Promise<string[]>;
+export type Tokenizer = (...args: TokenizerArgs) => Promise<string>;
 export type SplitTokenizerStage = (args: TokenizerArgs) => Promise<SplitTokenizerArgs>;
 export type TokenizerStage = (args: SplitTokenizerArgs) => Promise<SplitTokenizerArgs>;
 
@@ -118,6 +120,7 @@ export interface PutOptions {
     storeRawDocs?: boolean;
     storeVectors?: boolean;
     tokenizer?: Tokenizer;
+    tokenSplitRegex?: RegExp;
 }
 
 export interface QueryResultItemNoDoc {

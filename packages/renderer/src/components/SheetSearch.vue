@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue';
+import { reactive, ref } from 'vue';
 import { FormInstance, message } from 'ant-design-vue';
 import { notification } from 'ant-design-vue';
 import { indexDB, Locale, ignoreChars } from '../db';
 import { nodejieba } from '#preload';
 import CopyableText from './CopyableText.vue';
-import { QueryResultItem } from 'types/search-index';
 
 const formRef = ref<FormInstance>();
 
@@ -53,67 +52,65 @@ const state = reactive({
   },
 });
 
-const formatResult = (result: { _doc: any }[]) =>
-  result.map((item) => {
-    const locale = (item as any)._doc as Locale;
-    return {
-      idx: item._doc.idx,
-      cn: locale.cn,
-      en: locale.en,
-      in: locale.in,
-      th: locale.th,
-      vn: locale.vn,
-      table: locale.table,
-      book: locale.book,
-    };
-  });
-
-const FIELD = computed(() =>
-  state.form.field === 'cn' && state.form.keyword.length > 1
-    ? 'idx'
-    : state.form.field,
-);
+const formatResult = (
+  result: { _doc: Locale; _match: { SCORE: string }[] }[],
+) =>
+  result
+    // 匹配得分越多排越前
+    .sort((a, b) => {
+      const aScore = a._match.reduce((prev, next) => prev + +next.SCORE, 0);
+      const bScore = b._match.reduce((prev, next) => prev + +next.SCORE, 0);
+      return bScore - aScore;
+    })
+    .map((item) => {
+      const locale = (item as any)._doc as Locale;
+      return {
+        idx: item._doc.idx,
+        cn: locale.cn,
+        en: locale.en,
+        in: locale.in,
+        th: locale.th,
+        vn: locale.vn,
+        table: locale.table,
+        book: locale.book,
+      };
+    });
 
 const onFinish = async () => {
+  const { field } = state.form;
   const keyword = state.form.keyword.trim();
+  if (!keyword.length) {
+    state.dataSource = [];
+    return;
+  }
   console.time('【search】');
   try {
     state.spinning = true;
-    if (keyword.length > 1) {
-      // 大于1个字符的中文先分词
-      const searchQuery =
-        FIELD.value === 'cn'
-          ? nodejieba
-              .cutAll(keyword)
-              .filter((text) => !ignoreChars.includes(text))
-              .map((text) => `${FIELD.value}:${text}`)
-          : FIELD.value === 'en'
-          ? nodejieba
-              .cutHMM(keyword)
-              .filter((text) => !ignoreChars.includes(text))
-              .map((text) => `${FIELD.value}:${text}`)
-          : [`${FIELD.value}:${keyword}`];
+    // 分词搜索
+    const searchQuery =
+      field === 'cn'
+        ? nodejieba
+            .cutAll(keyword)
+            .filter((text) => !ignoreChars.includes(text))
+            .map((text) => `${field}:${text}`)
+        : field === 'en' || field === 'in'
+        ? nodejieba
+            .cutHMM(keyword)
+            .filter((text) => !ignoreChars.includes(text))
+            .map((text) => `${field}:${text}`)
+        : [`${field}:${keyword}`];
 
-      console.log(`【searchQuery】: ${searchQuery}`);
-      const { RESULT } = await indexDB.query(
-        {
-          OR: searchQuery,
-        },
-        { DOCUMENTS: true },
-      );
-      console.log(RESULT);
+    console.log(`【searchQuery】: ${searchQuery}`);
+    const { RESULT } = await indexDB.query(
+      {
+        OR: searchQuery,
+      },
+      { DOCUMENTS: true },
+    );
+    console.log(RESULT);
 
-      state.dataSource = formatResult(RESULT as QueryResultItem[]);
-      RESULT.length && message.success(`共找到${RESULT.length}条数据`);
-      // console.log({ RESULT, datas });
-    } else {
-      if (!state.allData.length) {
-        await initData();
-      }
-      state.dataSource = state.allData.filter((item) =>
-        item[FIELD.value]?.includes(keyword),
-      );
-    }
+    state.dataSource = formatResult(RESULT as any);
+    RESULT.length && message.success(`共找到${RESULT.length}条数据`);
     console.timeEnd('【search】');
   } catch (error) {
     notification.error({
@@ -135,22 +132,22 @@ const reset = async () => {
 /**
  * 初始化所有数据
  */
-const initData = async () => {
-  try {
-    console.time('【all】');
-    state.spinning = true;
-    const data = await indexDB.all();
-    state.allData = formatResult(data);
-    state.spinning = false;
-    console.timeEnd('【all】');
-  } catch (error) {
-    notification.error({
-      message: (error as any).message || JSON.stringify(error),
-    });
-  } finally {
-    state.spinning = false;
-  }
-};
+// const initData = async () => {
+//   try {
+//     console.time("【all】");
+//     state.spinning = true;
+//     const data = await indexDB.all();
+//     state.allData = formatResult(data as any);
+//     state.spinning = false;
+//     console.timeEnd("【all】");
+//   } catch (error) {
+//     notification.error({
+//       message: (error as any).message || JSON.stringify(error),
+//     });
+//   } finally {
+//     state.spinning = false;
+//   }
+// };
 </script>
 
 <template>

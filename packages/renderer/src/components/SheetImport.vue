@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { openFile, readExcel, nodejieba, decodeCol } from '#preload';
+import { openFile, readExcel, decodeCol } from '#preload';
 import { computed, reactive } from 'vue';
 import { notification } from 'ant-design-vue';
-import { ignoreChars, indexDB } from '../db';
+import { indexDB } from '../db';
 import type { Locale } from '../db';
 
 interface LocaleIndexs {
@@ -168,9 +168,6 @@ const importToDB = async (sheetTableDatas: SheetTableData[]) => {
 
           cnText.forEach((cn, idx) => {
             const dataDBItem: Locale = {
-              idx: nodejieba
-                .cutAll(cn)
-                .filter((text) => !ignoreChars.includes(text)),
               cn,
               en: enText[idx],
               in: inText[idx] ?? '',
