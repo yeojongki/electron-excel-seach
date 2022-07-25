@@ -175,6 +175,7 @@ const importToDB = async (sheetTableDatas: SheetTableData[]) => {
               th: thText[idx] ?? '',
               book: state.sheetBookName,
               table,
+              like: '0',
             };
             toImportDatas.push(dataDBItem);
           });

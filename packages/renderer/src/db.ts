@@ -15,8 +15,14 @@ export const dataDBName = `${projectName}_data`;
 export const indexDBName = `${projectName}_index`;
 
 export interface Locale {
-  id?: number;
-  idx?: string[];
+  /**
+   * seachIndex id
+   */
+  docId?: string;
+  /**
+   * 星标 1 加了星标 0 未加
+   */
+  like: string;
   /**
    * 中文
    */
@@ -73,7 +79,7 @@ window
   } as SearchIndexOptions)
   .then((result: SearchIndex) => {
     _searchIndex = result;
-    console.log(result.EXPORT().then((res) => console.log(res)));
+    // console.log(result.EXPORT().then((res) => console.log(res)));
   });
 
 export const ignoreChars =
@@ -88,9 +94,12 @@ export function setCurrentId(id: number | string) {
 }
 
 export const indexDB = {
-  async put<T = any>(items: T[]) {
-    await _searchIndex.PUT(items, {
+  put<T = any>(items: T[]) {
+    console.log({items});
+    
+    return _searchIndex.PUT(items, {
       tokenizer(tokens, field, ops) {
+        
         const {
           SKIP,
           LOWCASE,
@@ -111,13 +120,18 @@ export const indexDB = {
       },
     });
   },
-  async all(limit?: number) {
+  delete(ids: string[]) {
+    return _searchIndex.DELETE(...ids);
+  },
+  all(limit?: number) {
     return _searchIndex.ALL_DOCUMENTS(limit);
   },
-  async query(query: Token, options?: QueryOptions) {
-    const result = await _searchIndex.QUERY(query, options);
-    return result;
+  query(query: Token, options?: QueryOptions) {
+    return _searchIndex.QUERY(query, options);
   },
+  // flush() {
+  //   return _searchIndex.FLUSH();
+  // },
 };
 
 // export class DataDB extends Dexie {

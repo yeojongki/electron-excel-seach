@@ -14,11 +14,13 @@ declare module '@vue/runtime-core' {
     AFormItem: typeof import('ant-design-vue/es')['FormItem']
     AInput: typeof import('ant-design-vue/es')['Input']
     AInputNumber: typeof import('ant-design-vue/es')['InputNumber']
+    AModal: typeof import('ant-design-vue/es')['Modal']
     ARow: typeof import('ant-design-vue/es')['Row']
     ASelect: typeof import('ant-design-vue/es')['Select']
     ASelectOption: typeof import('ant-design-vue/es')['SelectOption']
     ASpace: typeof import('ant-design-vue/es')['Space']
     ASpin: typeof import('ant-design-vue/es')['Spin']
+    ASwitch: typeof import('ant-design-vue/es')['Switch']
     ATable: typeof import('ant-design-vue/es')['Table']
     ATabPane: typeof import('ant-design-vue/es')['TabPane']
     ATabs: typeof import('ant-design-vue/es')['Tabs']
@@ -29,6 +31,7 @@ declare module '@vue/runtime-core' {
     ReactiveCounter: typeof import('./src/components/ReactiveCounter.vue')['default']
     ReactiveHash: typeof import('./src/components/ReactiveHash.vue')['default']
     SheetImport: typeof import('./src/components/SheetImport.vue')['default']
+    SheetLikes: typeof import('./src/components/SheetLikes.vue')['default']
     SheetSearch: typeof import('./src/components/SheetSearch.vue')['default']
   }
 }

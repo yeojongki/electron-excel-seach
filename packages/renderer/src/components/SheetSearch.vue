@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue';
-import { FormInstance, message } from 'ant-design-vue';
-import { notification } from 'ant-design-vue';
+import { FormInstance, message, Modal, notification } from 'ant-design-vue';
+import {
+  StarFilled,
+  StarOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons-vue';
 import { indexDB, Locale, ignoreChars } from '../db';
 import { nodejieba } from '#preload';
 import CopyableText from './CopyableText.vue';
@@ -9,6 +13,7 @@ import CopyableText from './CopyableText.vue';
 const formRef = ref<FormInstance>();
 
 const state = reactive({
+  showAddModal: false,
   spinning: false,
   allData: [] as Locale[],
   dataSource: [] as Locale[],
@@ -46,14 +51,29 @@ const state = reactive({
       dataIndex: 'action',
     },
   ],
+  addForm: {
+    cn: '',
+    en: '',
+    in: '',
+    th: '',
+    vn: '',
+    book: '',
+    table: '',
+    like: '0',
+  },
   form: {
     field: 'cn' as 'cn' | 'en' | 'in' | 'th' | 'vn',
     keyword: '',
+    like: '0',
   },
 });
 
+/**
+ * 格式化 search-index 搜索结果
+ * @param result
+ */
 const formatResult = (
-  result: { _doc: Locale; _match: { SCORE: string }[] }[],
+  result: { _doc: Locale; _id: string; _match: { SCORE: string }[] }[],
 ) =>
   result
     // 匹配得分越多排越前
@@ -65,7 +85,7 @@ const formatResult = (
     .map((item) => {
       const locale = (item as any)._doc as Locale;
       return {
-        idx: item._doc.idx,
+        docId: item._id,
         cn: locale.cn,
         en: locale.en,
         in: locale.in,
@@ -73,18 +93,31 @@ const formatResult = (
         vn: locale.vn,
         table: locale.table,
         book: locale.book,
+        like: locale.like,
       };
     });
 
 const onFinish = async () => {
-  const { field } = state.form;
-  const keyword = state.form.keyword.trim();
-  if (!keyword.length) {
-    state.dataSource = [];
-    return;
-  }
-  console.time('【search】');
   try {
+    console.time('【search】');
+    const { field } = state.form;
+    const keyword = state.form.keyword.trim();
+    if (!keyword.length) {
+      if (state.form.like === '1') {
+        const { RESULT } = await indexDB.query(
+          {
+            AND: ['like:1'],
+          },
+          { DOCUMENTS: true },
+        );
+        state.dataSource = formatResult(RESULT as any);
+        RESULT.length && message.success(`共找到${RESULT.length}条数据`);
+      } else {
+        state.dataSource = [];
+      }
+      return;
+    }
+
     state.spinning = true;
     // 分词搜索
     const searchQuery =
@@ -103,7 +136,12 @@ const onFinish = async () => {
     console.log(`【searchQuery】: ${searchQuery}`);
     const { RESULT } = await indexDB.query(
       {
-        OR: searchQuery,
+        AND: [
+          `like:${state.form.like}`,
+          {
+            OR: searchQuery,
+          },
+        ],
       },
       { DOCUMENTS: true },
     );
@@ -130,6 +168,59 @@ const reset = async () => {
 };
 
 /**
+ * 删除
+ * @param docId
+ */
+const onDelete = async (docId: string) => {
+  Modal.confirm({
+    title: '确定删除吗?',
+    async onOk() {
+      await indexDB.delete([docId]);
+      onFinish(); // 刷新列表
+    },
+  });
+};
+
+/**
+ * 星标/取消星标
+ * @param data
+ * @param like
+ */
+const onLike = async (data: Locale, like: '0' | '1') => {
+  const { docId, ...rest } = data;
+  const item = {
+    ...rest,
+    like,
+  };
+
+  try {
+    await indexDB.delete([docId!]);
+    await indexDB.put([item]);
+  } catch (error) {
+    notification.error({
+      message: (error as any)?.message || JSON.stringify(error),
+    });
+  }
+  onFinish(); // 刷新列表
+};
+
+const addFormRef = ref<FormInstance>();
+
+/**
+ * 点击确认
+ */
+const onAddFormOk = async () => {
+  await addFormRef.value?.validateFields();
+  const item = { ...state.addForm };
+
+  await indexDB.put([item]);
+  message.success('添加成功');
+
+  await addFormRef.value?.resetFields();
+  state.showAddModal = false;
+};
+
+/**
  * 初始化所有数据
  */
 // const initData = async () => {
@@ -152,6 +243,85 @@ const reset = async () => {
 
 <template>
   <a-spin :spinning="state.spinning">
+    <!-- 新增词组弹窗 -->
+    <a-modal
+      v-model:visible="state.showAddModal"
+      title="新增词组"
+      ok-text="确定"
+      cancel-text="取消"
+      @ok="onAddFormOk"
+    >
+      <a-form
+        ref="addFormRef"
+        autocomplete="off"
+        :model="state.addForm"
+        layout="horizontal"
+      >
+        <a-form-item
+          label="中文"
+          name="cn"
+          :rules="[{ required: true, message: '必填' }]"
+        >
+          <a-input v-model:value="state.addForm.cn" />
+        </a-form-item>
+
+        <a-form-item
+          label="英文"
+          name="en"
+          :rules="[{ required: true, message: '必填' }]"
+        >
+          <a-input v-model:value="state.addForm.en" />
+        </a-form-item>
+
+        <a-form-item
+          label="印尼"
+          name="in"
+        >
+          <a-input v-model:value="state.addForm.in" />
+        </a-form-item>
+
+        <a-form-item
+          label="泰文"
+          name="th"
+        >
+          <a-input v-model:value="state.addForm.th" />
+        </a-form-item>
+
+        <a-form-item
+          label="越南"
+          name="vn"
+        >
+          <a-input v-model:value="state.addForm.vn" />
+        </a-form-item>
+
+        <a-form-item
+          label="工作簿"
+          name="table"
+        >
+          <a-input v-model:value="state.addForm.table" />
+        </a-form-item>
+
+        <a-form-item
+          label="工作表"
+          name="table"
+        >
+          <a-input v-model:value="state.addForm.table" />
+        </a-form-item>
+
+        <a-form-item
+          label="是否星标"
+          name="like"
+        >
+          <a-switch
+            v-model:checked="state.addForm.like"
+            un-checked-value="0"
+            checked-value="1"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 搜索表单 -->
     <a-form
       ref="formRef"
       :model="state.form"
@@ -160,28 +330,49 @@ const reset = async () => {
       class="mb-15"
       @finish="onFinish"
     >
-      <a-select v-model:value="state.form.field">
-        <a-select-option value="cn">
-          中文
-        </a-select-option>
-        <a-select-option value="en">
-          英文
-        </a-select-option>
-        <a-select-option value="in">
-          印尼
-        </a-select-option>
-        <a-select-option value="th">
-          泰文
-        </a-select-option>
-        <a-select-option value="vn">
-          越南
-        </a-select-option>
-      </a-select>
-      <a-input
-        v-model:value="state.form.keyword"
-        placeholder="请输入关键词"
-        style="width: 200px"
-      />
+      <div class="flex">
+        <a-form-item
+          name="field"
+          style="margin-right: 0"
+        >
+          <a-select v-model:value="state.form.field">
+            <a-select-option value="cn">
+              中文
+            </a-select-option>
+            <a-select-option value="en">
+              英文
+            </a-select-option>
+            <a-select-option value="in">
+              印尼
+            </a-select-option>
+            <a-select-option value="th">
+              泰文
+            </a-select-option>
+            <a-select-option value="vn">
+              越南
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <a-form-item name="keyword">
+          <a-input
+            v-model:value="state.form.keyword"
+            placeholder="请输入关键词"
+            style="width: 200px"
+          />
+        </a-form-item>
+
+        <a-form-item
+          label="是否星标"
+          name="like"
+        >
+          <a-switch
+            v-model:checked="state.form.like"
+            un-checked-value="0"
+            checked-value="1"
+          />
+        </a-form-item>
+      </div>
 
       <a-button
         class="ml-15"
@@ -199,13 +390,25 @@ const reset = async () => {
       </a-button>
     </a-form>
 
+    <!-- 搜索结果表格 -->
     <a-table
       :pagination="false"
       :bordered="true"
       :columns="state.columns"
       :data-source="state.dataSource"
     >
-      <template #bodyCell="{ column, text }">
+      <template #title>
+        <div class="flex justify-end">
+          <a-button
+            type="primary"
+            @click="state.showAddModal = true"
+          >
+            新增词组
+          </a-button>
+        </div>
+      </template>
+
+      <template #bodyCell="{ column, text, record }">
         <template
           v-if="
             column.dataIndex === 'cn' ||
@@ -220,6 +423,23 @@ const reset = async () => {
             class="long-text"
           />
         </template>
+
+        <template v-if="column.dataIndex === 'action'">
+          <DeleteOutlined
+            class="icon-text text-red mr-10"
+            @click="onDelete(record.docId)"
+          />
+          <StarFilled
+            v-show="record.like === '1'"
+            class="icon-text text-blue"
+            @click="onLike(record, '0')"
+          />
+          <StarOutlined
+            v-show="record.like === '0'"
+            class="icon-text text-blue"
+            @click="onLike(record, '1')"
+          />
+        </template>
       </template>
     </a-table>
   </a-spin>
@@ -229,5 +449,9 @@ const reset = async () => {
 .long-text {
   max-width: 400px;
   display: inline-block;
+}
+
+.icon-text {
+  font-size: 18px;
 }
 </style>

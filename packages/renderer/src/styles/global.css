@@ -5,7 +5,6 @@
 }
 
 html {
-  text-align: center;
   padding: 0 20px;
 }
 
@@ -48,6 +47,10 @@ li {
 
 .items-center {
   align-items: center;
+}
+
+.items-end {
+  align-items: end;
 }
 
 .font-bold {
@@ -100,6 +103,10 @@ li {
 
 .m-15 {
   margin: 15px;
+}
+
+.mr-10 {
+  margin-right: 10px;
 }
 
 .ml-15 {
