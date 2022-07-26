@@ -1,12 +1,9 @@
 /* eslint-env node */
 
-import { chrome } from '../../.electron-vendors.cache.json';
-import { join } from 'path';
+import {chrome} from '../../.electron-vendors.cache.json';
+import {join} from 'path';
 import vue from '@vitejs/plugin-vue';
-import { renderer } from 'unplugin-auto-expose';
-import Components from 'unplugin-vue-components/vite';
-import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers';
-import { defineConfig } from 'vite';
+import {renderer} from 'unplugin-auto-expose';
 
 const PACKAGE_ROOT = __dirname;
 
@@ -14,7 +11,7 @@ const PACKAGE_ROOT = __dirname;
  * @type {import('vite').UserConfig}
  * @see https://vitejs.dev/config/
  */
-const config = defineConfig({
+const config = {
   mode: process.env.MODE,
   root: PACKAGE_ROOT,
   resolve: {
@@ -37,21 +34,17 @@ const config = defineConfig({
       input: join(PACKAGE_ROOT, 'index.html'),
     },
     emptyOutDir: true,
-    // brotliSize: false,
+    brotliSize: false,
   },
   test: {
     environment: 'happy-dom',
   },
   plugins: [
     vue(),
-    Components({
-      dts: true,
-      resolvers: [AntDesignVueResolver({ importStyle: 'css' })],
-    }),
     renderer.vite({
       preloadEntry: join(PACKAGE_ROOT, '../preload/src/index.ts'),
     }),
   ],
-});
+};
 
 export default config;

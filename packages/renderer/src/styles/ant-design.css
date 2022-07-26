@@ -1,7 +1,0 @@
-@import 'ant-design-vue/es/message/style/index';
-@import 'ant-design-vue/es/notification/style/index';
-@import 'ant-design-vue/es/modal/style/index';
-
-.ant-form .ant-input-number {
-  width: 100%;
-}
