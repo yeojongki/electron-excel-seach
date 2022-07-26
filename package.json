@@ -32,7 +32,9 @@
     "postinstall": "cross-env ELECTRON_RUN_AS_NODE=1 npx --no-install electron ./scripts/update-electron-vendors.js "
   },
   "devDependencies": {
+    "@types/search-index": "^3.0.0",
     "@typescript-eslint/eslint-plugin": "5.30.5",
+    "@typescript-eslint/parser": "^5.30.6",
     "@vitejs/plugin-vue": "3.0.0-beta.1",
     "@vue/test-utils": "2.0.2",
     "cross-env": "7.0.3",
@@ -43,16 +45,25 @@
     "eslint-plugin-vue": "9.2.0",
     "happy-dom": "6.0.2",
     "nano-staged": "0.8.0",
+    "node-xlsx": "^0.21.0",
+    "nodejieba": "^2.6.0",
     "playwright": "1.23.2",
     "simple-git-hooks": "2.8.0",
     "typescript": "4.7.4",
-    "unplugin-auto-expose": "0.0.1",
+    "unplugin-auto-expose": "^0.0.1",
+    "unplugin-vue-components": "^0.21.1",
     "vite": "3.0.0",
     "vitest": "0.18.0",
     "vue-tsc": "0.38.4"
   },
   "dependencies": {
+    "@vueuse/core": "^8.9.4",
+    "ant-design-vue": "^3.2.10",
+    "dexie": "^3.2.2",
     "electron-updater": "5.0.5",
-    "vue": "3.2.37"
+    "events": "^3.3.0",
+    "search-index": "^3.1.3",
+    "vue": "3.2.37",
+    "xlsx": "^0.18.5"
   }
 }
