@@ -8,6 +8,8 @@ if (process.env.VITE_APP_VERSION === undefined) {
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
+  productName: "打工人的Excel",
+  publish: 'always',
   directories: {
     output: 'dist',
     buildResources: 'buildResources',
