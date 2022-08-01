@@ -65,7 +65,7 @@ const CUSTOM_SPLIT = ([tokens, field, ops]: TokenizerArgs) => {
     field === 'cn'
       ? nodejieba.cutAll(tokens).filter((text) => !ignoreChars.includes(text))
       : field === 'en' || field === 'in'
-      ? nodejieba.cutHMM(tokens).filter((text) => !ignoreChars.includes(text))
+      ? nodejieba.cut(tokens, true).filter((text) => !ignoreChars.includes(text))
       : [tokens],
     field,
     ops,
