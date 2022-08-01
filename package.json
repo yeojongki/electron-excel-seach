@@ -56,12 +56,12 @@
     "vue-tsc": "0.38.4"
   },
   "dependencies": {
+    "@node-rs/jieba": "^1.6.1",
     "@vueuse/core": "^8.9.4",
     "ant-design-vue": "^3.2.10",
     "electron-updater": "5.0.5",
     "events": "^3.3.0",
     "node-xlsx": "^0.21.0",
-    "nodejieba": "^2.6.0",
     "vue": "3.2.37",
     "xlsx": "^0.18.5"
   }

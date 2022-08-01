@@ -1,7 +1,7 @@
 import { ipcRenderer, clipboard } from 'electron';
 import xlsx from 'node-xlsx';
 import { utils } from 'xlsx';
-import * as nodejieba from 'nodejieba';
+import * as nodejieba from '@node-rs/jieba';
 import * as fs from 'fs';
 
 /**

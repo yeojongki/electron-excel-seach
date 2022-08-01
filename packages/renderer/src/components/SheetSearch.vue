@@ -128,7 +128,7 @@ const onFinish = async () => {
             .map((text) => `${field}:${text}`)
         : field === 'en' || field === 'in'
         ? nodejieba
-            .cutHMM(keyword)
+            .cut(keyword, true)
             .filter((text) => !ignoreChars.includes(text))
             .map((text) => `${field}:${text}`)
         : [`${field}:${keyword}`];
