@@ -1,6 +1,6 @@
 {
   "name": "vite-electron-builder",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Secure boilerplate for Electron app based on Vite",
   "private": true,
   "engines": {
