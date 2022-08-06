@@ -13,7 +13,6 @@ if (process.env.VITE_APP_VERSION === undefined) {
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
-  productName: '打工人的Excel',
   asar: false,
   publish: {
     provider: 'github',
