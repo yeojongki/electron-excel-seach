@@ -1,6 +1,6 @@
 {
   "name": "electron-excel-search",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "Secure boilerplate for Electron app based on Vite",
   "private": true,
   "engines": {
