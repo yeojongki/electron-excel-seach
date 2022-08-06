@@ -1,4 +1,4 @@
-const pkg = require("./package.json");
+const pkg = require('./package.json');
 if (process.env.VITE_APP_VERSION === undefined) {
   const now = new Date();
   process.env.VITE_APP_VERSION =
@@ -13,18 +13,18 @@ if (process.env.VITE_APP_VERSION === undefined) {
  * @see https://www.electron.build/configuration/configuration
  */
 const config = {
-  productName: "打工人的Excel",
+  productName: '打工人的Excel',
   asar: false,
   publish: {
-    provider: "github",
-    owner: "yeojongki",
-    repo: "electron-excel-seach",
+    provider: 'github',
+    owner: 'yeojongki',
+    repo: 'electron-excel-seach',
   },
   directories: {
-    output: "dist",
-    buildResources: "buildResources",
+    output: 'dist',
+    buildResources: 'buildResources',
   },
-  files: ["packages/**/dist/**"],
+  files: ['packages/**/dist/**'],
   extraMetadata: {
     version: process.env.VITE_APP_VERSION,
   },
@@ -33,7 +33,7 @@ const config = {
     verifyUpdateCodeSignature: false,
   },
   mac: {
-    target: "dmg",
+    target: ['dmg', 'zip'],
   },
   nsis: {
     oneClick: false,

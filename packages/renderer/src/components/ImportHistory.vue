@@ -69,33 +69,37 @@ const onDeleteBook = (book: string) => {
 </script>
 
 <template>
-  <div
-    v-for="(table, book) in history"
-    :key="book + '-history'"
-  >
-    <div>
-      <div class="mb-15">
-        {{ book }}:
-        <a-button
-          size="small"
-          danger
-          @click="onDeleteBook(book + '')"
-        >
-          删除工作簿
-        </a-button>
-      </div>
+  <template v-if="history.length">
+    <div
+      v-for="(table, book) in history"
+      :key="book + '-history'"
+    >
+      <div>
+        <div class="mb-15">
+          {{ book }}:
+          <a-button
+            size="small"
+            danger
+            @click="onDeleteBook(book + '')"
+          >
+            删除工作簿
+          </a-button>
+        </div>
 
-      <a-tag
-        v-for="tableName in table"
-        :key="`${book}-${tableName}-tag`"
-        closable
-        :color="getColor(tableName, book)"
-        class="mb-15"
-        @close.prevent="onDeleteTag(tableName, book)"
-      >
-        {{ tableName }}
-      </a-tag>
+        <a-tag
+          v-for="tableName in table"
+          :key="`${book}-${tableName}-tag`"
+          closable
+          :color="getColor(tableName, book)"
+          class="mb-15"
+          @close.prevent="onDeleteTag(tableName, book)"
+        >
+          {{ tableName }}
+        </a-tag>
+      </div>
+      <a-divider />
     </div>
-    <a-divider />
-  </div>
+  </template>
+
+  <a-empty v-else />
 </template>
