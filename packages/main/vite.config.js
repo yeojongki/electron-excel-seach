@@ -1,8 +1,8 @@
-import {node} from '../../.electron-vendors.cache.json';
-import {join} from 'path';
+import { node } from '../../.electron-vendors.cache.json';
+import { join } from 'path';
+import copy from 'rollup-plugin-copy';
 
 const PACKAGE_ROOT = __dirname;
-
 
 /**
  * @type {import('vite').UserConfig}
@@ -11,6 +11,16 @@ const PACKAGE_ROOT = __dirname;
 const config = {
   mode: process.env.MODE,
   root: PACKAGE_ROOT,
+  plugins: [
+    copy({
+      targets: [
+        {
+          src: join(PACKAGE_ROOT, 'dev-app-update.yml'),
+          dest: join(PACKAGE_ROOT, 'dist'),
+        },
+      ],
+    }),
+  ],
   envDir: process.cwd(),
   resolve: {
     alias: {

@@ -1,6 +1,6 @@
 {
-  "name": "vite-electron-builder",
-  "version": "0.0.2",
+  "name": "electron-excel-search",
+  "version": "0.0.3",
   "description": "Secure boilerplate for Electron app based on Vite",
   "private": true,
   "engines": {
@@ -18,7 +18,7 @@
     "build:main": "cd ./packages/main && vite build",
     "build:preload": "cd ./packages/preload && vite build",
     "build:renderer": "cd ./packages/renderer && vite build",
-    "compile": "cross-env MODE=production npm run build && electron-builder build --config .electron-builder.config.js --dir --config.asar=false",
+    "compile": "cross-env MODE=production npm run build && electron-builder build --config .electron-builder.config.js --dir",
     "test": "npm run test:main && npm run test:preload && npm run test:renderer && npm run test:e2e",
     "test:e2e": "npm run build && vitest run",
     "test:main": "vitest run -r packages/main --passWithNoTests",
@@ -47,6 +47,7 @@
     "happy-dom": "6.0.2",
     "nano-staged": "0.8.0",
     "playwright": "1.23.2",
+    "rollup-plugin-copy": "^3.4.0",
     "simple-git-hooks": "2.8.0",
     "typescript": "4.7.4",
     "unplugin-auto-expose": "^0.0.1",
